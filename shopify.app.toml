@@ -26,6 +26,7 @@ redirect_urls = [
   "https://gold-jwellery-price-editor.onrender.com/auth/callback",
   "https://gold-jwellery-price-editor.onrender.com/auth/shopify/callback",
   "https://gold-jwellery-price-editor.onrender.com/api/auth/callback"
+  "https://*.myshopify.com/admin/oauth/authorize"
 ]
 
 [pos]
