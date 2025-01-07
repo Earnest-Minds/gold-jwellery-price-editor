@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "8eafc29cde766315fd81aeda3dd81998"
-application_url = "https://heading-fell-aids-cl.trycloudflare.com"
+application_url = "https://gold-jwellery-price-editor.onrender.com"
 embedded = true
 name = "Gold Jwellery Price Editor"
 handle = "gold-jwellery-price-editor-1"
@@ -23,9 +23,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://heading-fell-aids-cl.trycloudflare.com/auth/callback",
-  "https://heading-fell-aids-cl.trycloudflare.com/auth/shopify/callback",
-  "https://heading-fell-aids-cl.trycloudflare.com/api/auth/callback"
+  "https://gold-jwellery-price-editor.onrender.com/auth/callback",
+  "https://gold-jwellery-price-editor.onrender.com/auth/shopify/callback",
+  "https://gold-jwellery-price-editor.onrender.com/api/auth/callback"
 ]
 
 [pos]
