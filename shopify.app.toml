@@ -32,6 +32,3 @@ redirect_urls = [
 [pos]
 embedded = false
 
-[build]
-dev_store_url = "baubies.myshopify.com"
-automatically_update_urls_on_dev = true
