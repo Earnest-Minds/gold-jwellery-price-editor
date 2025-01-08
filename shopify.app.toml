@@ -6,6 +6,10 @@ embedded = true
 name = "Gold Jwellery Price Editor"
 handle = "gold-jwellery-price-editor-1"
 
+
+[build]
+include_config_on_deploy = true
+
 [webhooks]
 api_version = "2025-01"
 
@@ -25,10 +29,9 @@ scopes = "write_products"
 redirect_urls = [
   "https://gold-jwellery-price-editor.onrender.com/auth/callback",
   "https://gold-jwellery-price-editor.onrender.com/auth/shopify/callback",
-  "https://gold-jwellery-price-editor.onrender.com/api/auth/callback",
-  "https://*.myshopify.com/admin/oauth/authorize"
+  "https://gold-jwellery-price-editor.onrender.com/api/auth/callback"
 ]
 
 [pos]
-embedded = false
+embedded = true
 
