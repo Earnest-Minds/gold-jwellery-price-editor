@@ -4,7 +4,7 @@ client_id = "c160f89cd1fe624ef5a7492d707b7e85"
 application_url = "https://gold-jwellery-price-editor.onrender.com"
 embedded = true
 name = "Gold Jwellery Price Editor"
-handle = "gold-jwellery-price-editor"
+handle = "custom-gold-price-update"
 
 
 [build]
