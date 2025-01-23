@@ -7,7 +7,6 @@ import {
   Card,
   Button,
   BlockStack,
-  Bleed,
   InlineStack,
   ResourceList,
   ResourceItem,
@@ -75,6 +74,7 @@ export const action = async ({ request }) => {
   const formData = await request.formData();
   const price = parseFloat(formData.get("price"));
   const makingCharges = parseFloat(formData.get("makingCharges")) || 0;
+  const discountPrice = parseFloat(formData.get("discountPrice")) || 0; // Get discount
   const productData = JSON.parse(formData.get("productData"));
   const diamondPrices = JSON.parse(formData.get("diamondPrices"));
 
@@ -86,30 +86,36 @@ export const action = async ({ request }) => {
     "9k": 0.385,
   };
 
+  const parseMetafieldValue = (value) => {
+    if (!value) return null;
+    try {
+      if (value.startsWith("{") || value.startsWith("[")) {
+        return JSON.parse(value);
+      }
+    } catch {
+      console.warn("Invalid JSON in metafield:", value);
+    }
+    return value;
+  };
+
+  const getMetafieldValue = (metafields, key) => {
+    const metafield = metafields.find(
+      (m) => m.node.key === key && m.node.namespace === "custom"
+    );
+    return metafield ? parseMetafieldValue(metafield.node.value) : null;
+  };
+
   try {
     const updatePromises = productData.map(async (product) => {
       const metafields = product.metafields.edges;
 
-      const getMetafieldValue = (key) => {
-        const metafield = metafields.find(
-          (m) => m.node.key === key && m.node.namespace === "custom"
-        );
-        return metafield ? metafield.node.value : null;
-      };
+      const diamondType_1 = getMetafieldValue(metafields, "diamond_1");
+      const diamondType_2 = getMetafieldValue(metafields, "diamond_2");
+      const diamondType_3 = getMetafieldValue(metafields, "diamond_3");
 
-      const diamondType_1 = JSON.parse(getMetafieldValue("diamond_1") || "[]")[0] || null;
-      const diamondType_2 = JSON.parse(getMetafieldValue("diamond_2") || "[]")[0] || null;
-      const diamondType_3 = JSON.parse(getMetafieldValue("diamond_3") || "[]")[0] || null;
-
-      const diamondWeight_1 = getMetafieldValue("diamond_weight_1")
-        ? JSON.parse(getMetafieldValue("diamond_weight_1")).value || 0
-        : 0;
-      const diamondWeight_2 = getMetafieldValue("diamond_weight_2")
-        ? JSON.parse(getMetafieldValue("diamond_weight_2")).value || 0
-        : 0;
-      const diamondWeight_3 = getMetafieldValue("diamond_weight_3")
-        ? JSON.parse(getMetafieldValue("diamond_weight_3")).value || 0
-        : 0;
+      const diamondWeight_1 = getMetafieldValue(metafields, "diamond_weight_1")?.value || 0;
+      const diamondWeight_2 = getMetafieldValue(metafields, "diamond_weight_2")?.value || 0;
+      const diamondWeight_3 = getMetafieldValue(metafields, "diamond_weight_3")?.value || 0;
 
       const selectedDiamonds = [
         { type: diamondType_1, weight: diamondWeight_1 },
@@ -122,7 +128,10 @@ export const action = async ({ request }) => {
         price: (diamondPrices[diamond.type] || 0) * diamond.weight,
       }));
 
-      const totalPrice = diamondPricesCalculated.reduce((sum, item) => sum + item.price, 0);
+      let totalPrice = diamondPricesCalculated.reduce((sum, item) => sum + item.price, 0);
+
+      // Apply discount to the total diamond price
+      totalPrice = Math.max(totalPrice - discountPrice, 0); // Ensure the total doesn't go below 0
 
       const variants = product.variants.edges
         .filter((edge) =>
@@ -136,18 +145,23 @@ export const action = async ({ request }) => {
           );
           const weightMetafield = edge.node.metafield?.value;
 
-          let weight = 1;
+          let weight = 0; // Default weight to 0 for invalid cases
           try {
-            const parsedWeight = JSON.parse(weightMetafield);
+            const parsedWeight = parseMetafieldValue(weightMetafield);
             weight =
               parsedWeight?.value && parsedWeight.unit === "GRAMS"
                 ? parseFloat(parsedWeight.value)
-                : 1;
+                : 0;
           } catch {
-            weight = weightMetafield === "N/A" ? 0 : parseFloat(weightMetafield) || 1;
+            weight = weightMetafield === "N/A" ? 0 : parseFloat(weightMetafield) || 0;
           }
 
-          const updatedPrice = price * priceMap[karat] * weight + makingCharges + totalPrice;
+          // Apply making charges only if weight > 0
+          const makingChargesForWeight = weight > 0 ? makingCharges * weight : 0;
+
+          // Calculate final price (gold + diamond with discount)
+          const updatedPrice =
+            price * priceMap[karat] * weight + makingChargesForWeight + totalPrice;
 
           return {
             id: edge.node.id,
@@ -215,10 +229,10 @@ export default function Index() {
   const [error, setError] = useState(null);
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [priceInput, setPriceInput] = useState("");
-  const [makingChargesInput, setMakingChargesInput] = useState("");
+  const [priceInput, setPriceInput] = useState("8000");
+  const [makingChargesInput, setMakingChargesInput] = useState("1200");
+  const [discountPriceInput, setDiscountPriceInput] = useState("0"); // New discount state
 
-  // State to handle dynamic diamond pricing
   const [diamondPrices, setDiamondPrices] = useState({
     "Round Solitaire 5ct+": 30000,
     "Round Solitaire 3ct+": 30000,
@@ -236,7 +250,7 @@ export default function Index() {
     setLoading(true);
     setError(null);
     try {
-      const apiKey = "goldapi-43irpsm4wlppn5-io";
+      const apiKey = "goldapi-b96usm5mg976t-io";
       const response = await fetch("https://www.goldapi.io/api/XAU/INR", {
         headers: {
           "x-access-token": apiKey,
@@ -288,15 +302,14 @@ export default function Index() {
         fetchProducts();
         setPriceInput("");
         setMakingChargesInput("");
+        setDiscountPriceInput("");
       }
     }
   }, [fetcher.data]);
 
   const handlePriceChange = (value) => setPriceInput(value);
-  const handleMakingChargesChange = (value) =>
-    setMakingChargesInput(value);
-
-  // Handler to update diamond price dynamically
+  const handleMakingChargesChange = (value) => setMakingChargesInput(value);
+  const handleDiscountPriceChange = (value) => setDiscountPriceInput(value); // New handler
   const handleDiamondPriceChange = (type, value) => {
     setDiamondPrices((prevPrices) => ({
       ...prevPrices,
@@ -316,6 +329,7 @@ export default function Index() {
         {
           price: priceInput,
           makingCharges: makingChargesInput,
+          discountPrice: discountPriceInput, // Include discount
           diamondPrices: JSON.stringify(diamondPrices),
           productData: JSON.stringify(products),
         },
@@ -331,13 +345,12 @@ export default function Index() {
 
   return (
     <Page>
-      <TitleBar title="Gold-Jewellery-Price-Editor" />
+      <TitleBar title="Update Prices" />
       <Layout>
         <Layout.Section variant="oneHalf">
           <Card padding="1600">
             <BlockStack gap="400">
-           
-              <Text marginInlineStart="800" variant="headingLg" alignment="center">
+              <Text variant="headingLg" alignment="center">
                 Current Gold Price (24K)
               </Text>
 
@@ -376,7 +389,6 @@ export default function Index() {
                 </Button>
               </InlineStack>
 
-              {/* Gold and Making Charges Input */}
               <BlockStack gap="400" alignment="center">
                 <InlineStack gap="300" align="center">
                   <TextField
@@ -393,10 +405,16 @@ export default function Index() {
                     autoComplete="off"
                     type="number"
                   />
+                  <TextField
+                    label="Discount on Diamonds (₹)" // New discount input
+                    value={discountPriceInput}
+                    onChange={handleDiscountPriceChange}
+                    autoComplete="off"
+                    type="number"
+                  />
                 </InlineStack>
               </BlockStack>
 
-              {/* Diamond Pricing Inputs */}
               <BlockStack gap="400">
                 <Text variant="headingMd">Diamond Prices (₹)</Text>
                 {Object.entries(diamondPrices).map(([type, value]) => (
@@ -410,7 +428,6 @@ export default function Index() {
                 ))}
               </BlockStack>
 
-              {/* Submit Button */}
               <InlineStack gap="300" align="center">
                 <Button
                   onClick={handleButtonClick}
@@ -423,7 +440,7 @@ export default function Index() {
             </BlockStack>
           </Card>
         </Layout.Section>
-{/* 
+
         <Layout.Section>
           <Card>
             <BlockStack gap="4">
@@ -443,25 +460,36 @@ export default function Index() {
                           {product.title}
                         </Text>
                         {product.metafields.edges
-              .filter(metafieldEdge => metafieldEdge.node.namespace === 'custom')
-              .map((metafieldEdge, index) => (
-                <Text key={index} variant="bodySm" color="subdued">
-                  {metafieldEdge.node.key}: {metafieldEdge.node.value}
-                </Text>
-            ))}
-                        {product.variants.edges.map((edge, index) => (
-                            <BlockStack key={index} gap="1">
-                              <Text variant="bodyMd" fontWeight="bold">
-                                Variant: {edge.node.title || 'No Title'}
-                              </Text>
-                              <Text variant="bodySm">
-                                Price: ₹{edge.node.price || 'N/A'}
-                              </Text>
-                              <Text variant="bodySm">
-                                  Weight: {edge.node.metafield?.value ? `${edge.node.metafield.value} g` : 'N/A'}
-                                </Text>
-                            </BlockStack>
+                          .filter(
+                            (metafieldEdge) =>
+                              metafieldEdge.node.namespace === "custom"
+                          )
+                          .map((metafieldEdge, index) => (
+                            <Text
+                              key={index}
+                              variant="bodySm"
+                              color="subdued"
+                            >
+                              {metafieldEdge.node.key}:{" "}
+                              {metafieldEdge.node.value}
+                            </Text>
                           ))}
+                        {product.variants.edges.map((edge, index) => (
+                          <BlockStack key={index} gap="1">
+                            <Text variant="bodyMd" fontWeight="bold">
+                              Variant: {edge.node.title || "No Title"}
+                            </Text>
+                            <Text variant="bodySm">
+                              Price: ₹{edge.node.price || "N/A"}
+                            </Text>
+                            <Text variant="bodySm">
+                              Weight:{" "}
+                              {edge.node.metafield?.value
+                                ? `${edge.node.metafield.value} g`
+                                : "N/A"}
+                            </Text>
+                          </BlockStack>
+                        ))}
                       </BlockStack>
                     </ResourceItem>
                   )}
@@ -469,7 +497,7 @@ export default function Index() {
               )}
             </BlockStack>
           </Card>
-        </Layout.Section> */}
+        </Layout.Section>
       </Layout>
     </Page>
   );
