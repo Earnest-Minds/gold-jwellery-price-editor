@@ -1,14 +1,10 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "8eafc29cde766315fd81aeda3dd81998"
-application_url = "https://gold-jwellery-price-editor.onrender.com"
+client_id = "63f434d84ede5f7dffe15ae1e4b0db6b"
+application_url = "https://product-price-updater.onrender.com"
 embedded = true
-name = "Gold Jwellery Price Editor"
-handle = "gold-jwellery-price-editor-1"
-
-
-[build]
-include_config_on_deploy = true
+name = "Product-price-Updater"
+handle = "product-price-updater-2"
 
 [webhooks]
 api_version = "2025-01"
@@ -27,11 +23,14 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://gold-jwellery-price-editor.onrender.com/auth/callback",
-  "https://gold-jwellery-price-editor.onrender.com/auth/shopify/callback",
-  "https://gold-jwellery-price-editor.onrender.com/api/auth/callback"
+  "https://product-price-updater.onrender.com/auth/callback",
+  "https://product-price-updater.onrender.com/auth/shopify/callback",
+  "https://product-price-updater.onrender.com/api/auth/callback"
 ]
 
 [pos]
-embedded = true
+embedded = false
 
+[build]
+dev_store_url = "earnestminds.myshopify.com"
+automatically_update_urls_on_dev = true
